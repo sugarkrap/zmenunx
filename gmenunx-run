@@ -1,0 +1,23 @@
+#!/bin/sh
+# GMenuNX lives on the card (/mnt/card/.zaurus, already on PATH via
+# /etc/zaurus-card.sh). Its skins/translations/input.conf are read
+# relative to the current directory (see src/utilities.cpp's
+# data_path()), so this cd's into usr/share/gmenunx/ before exec'ing it --
+# running the binary directly from anywhere else finds no assets.
+#
+# matchbox-fbrun is what makes this safe to run from anywhere. Started
+# from a console it just runs GMenuNX and restores the console afterwards,
+# however it exits. Started while the desktop is up it asks first, then
+# stops the graphical session so GMenuNX can have the framebuffer and the
+# input devices to itself -- Xfbdev holds an EVIOCGRAB on the keyboard and
+# touchscreen, so an app reading them directly renders under X but never
+# receives a keystroke.
+#
+# Launching from the desktop icon does not go through this script twice:
+# gmenunx.desktop is marked X-Piko-Heavy and matchbox-desktop applies the
+# wrapper itself; matchbox-fbrun's own re-entry guard makes the second
+# invocation here a no-op passthrough.
+APP=/mnt/card/.zaurus/usr/share/gmenunx
+[ -x "$APP/gmenunx" ] || { echo "gmenunx: no card at $APP" >&2; exit 1; }
+cd "$APP" || exit 1
+exec matchbox-fbrun -n GMenuNX -- "$APP/gmenunx"

@@ -1,0 +1,33 @@
+[Desktop Entry]
+Type=Application
+Name=GMenuNX
+Comment=Application/game launcher
+# GMenuNX runs as a plain SDL1/fbcon app: it opens /dev/fb0 and the input
+# devices directly, which can't be shared with Xfbdev (it holds an
+# EVIOCGRAB on the keyboard and touchscreen). X-Piko-Heavy tells
+# matchbox-desktop to run it through matchbox-fbrun, which asks first,
+# stops the graphical session, and brings the desktop back on exit -- see
+# piko's userspace/src/matchbox-fbrun.cxx.
+X-Piko-Heavy=true
+X-Piko-Heavy-Reason=GMenuNX needs the framebuffer and the input devices to itself.
+#
+# Absolute path on purpose: matchbox-desktop is started from inittab, whose
+# PATH is /sbin:/usr/sbin:/bin:/usr/bin -- /etc/zaurus-card.sh (which adds
+# the card's usr/bin) is only sourced by login shells, so a bare name would
+# not resolve here.
+#
+# gmenunx-run rather than the gmenunx binary directly: gmenunx reads its
+# skins/translations/input.conf relative to its current directory (see
+# src/utilities.cpp's data_path()), so it needs to be launched from
+# usr/share/gmenunx/, not usr/bin/ -- gmenunx-run is what cd's there. It
+# calls matchbox-fbrun too, which is harmless -- the wrapper detects it is
+# already inside one and just runs the app.
+Exec=/mnt/card/.zaurus/usr/bin/gmenunx-run
+# Absolute path, same reasoning as Exec=: mb_dot_desktop_icon_get_full_path()
+# (libmatchbox/libmb/mbdotdesktop.c) checks $HOME/.icons, the icon theme
+# dirs, and DATADIR/pixmaps first, but falls back to treating Icon= as a
+# literal path if none of those match -- which is what lets this stay a
+# card-only package instead of writing an icon into $HOME on NAND.
+Icon=/mnt/card/.zaurus/usr/share/pixmaps/gmenunx.png
+Terminal=false
+Categories=System;

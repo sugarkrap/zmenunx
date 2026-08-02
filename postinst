@@ -1,0 +1,20 @@
+#!/bin/sh
+# Runs on the device after opkg unpacks this package (see piko's
+# tools/make-ipk.sh --postinst and libopkg/opkg_configure.c, which execs
+# control/postinst itself -- nothing else invokes this).
+#
+# Nudges matchbox-desktop to notice gmenunx.desktop. Usually unnecessary --
+# it watches the application directories with inotify and reloads on its
+# own -- but that watch on a card's applications directory is only
+# (re)armed when the mount table changes, so a package that is the first
+# to ever create that directory on a given card (nothing existed there yet
+# when the card was mounted) is missed until something asks for a rescan
+# by hand. See piko's usr/sbin/deskscan for the full explanation.
+#
+# Swallow deskscan's exit status: it returns 1 when matchbox-desktop isn't
+# running at all (e.g. installing with no graphical session up, or the
+# qemu-arm offline-root test harness), which is a normal outcome here, not
+# an install failure -- opkg treats a nonzero postinst as "unpacked only,
+# configuration required," which would misreport a successful install.
+[ -x /usr/sbin/deskscan ] && /usr/sbin/deskscan
+exit 0
