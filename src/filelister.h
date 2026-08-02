@@ -21,6 +21,7 @@
 #ifndef FILELISTER_H_
 #define FILELISTER_H_
 
+#include <cstdint>
 #include <string>
 #include <vector>
 

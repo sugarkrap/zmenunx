@@ -1,0 +1,59 @@
+# Sharp Zaurus SL-C860 (piko ROM). PXA255, ARMv5TE XScale, soft-float,
+# uClibc, fbcon-only. GMenuNX runs as an ordinary SDL1/fbcon app that gets
+# exclusive access to /dev/fb0 and the input devices via piko's
+# matchbox-fbrun at launch time (see build-package.sh / gmenunx.desktop).
+#
+# Unlike the RetroFW/OD/Miyoo toolchains, piko's SDL/SDL_image/SDL_ttf are
+# NOT installed into the cross-toolchain's own sysroot (so plain
+# `$(CC) --print-sysroot` won't find them) -- they're staged separately
+# under the sibling piko checkout's userspace/stage-sdl and
+# userspace/stage-target (see piko's tools/build-sdl.sh,
+# build-sdl-image.sh, build-sdl-ttf.sh, build-thirdparty-deps.sh). This
+# Makefile points SDL_CFLAGS/SDL_LIBS at that staging tree directly
+# instead of relying on gmenunx.mk's default sdl-config lookup.
+#
+# Build with piko's cross toolchain in PATH, from a piko checkout next to
+# this one (override PIKO_DIR if it lives elsewhere):
+#   export PATH="../piko/toolchain/x-tools/arm-unknown-linux-uclibcgnueabi/bin:$PATH"
+#   export CC=arm-unknown-linux-uclibcgnueabi-gcc
+#   export CXX=arm-unknown-linux-uclibcgnueabi-g++
+#   export STRIP=arm-unknown-linux-uclibcgnueabi-strip
+#   make -f Makefile.zaurus
+
+PLATFORM = zaurus
+
+PIKO_DIR   ?= ../piko
+SDL_STAGE  := $(PIKO_DIR)/userspace/stage-sdl
+DEPS_STAGE := $(PIKO_DIR)/userspace/stage-target
+
+SDL_CFLAGS ?= -I$(SDL_STAGE)/usr/include/SDL
+SDL_LIBS   ?= -L$(SDL_STAGE)/usr/lib -lSDL -lpthread
+
+# libopk/unsqfs.c needs zlib.h -- gmenunx.mk's libopk compile rule takes
+# CPPFLAGS (unlike the rest of this file's flags, it doesn't fold in
+# $(CFLAGS)), so this is the one that needs it.
+CPPFLAGS += -I$(DEPS_STAGE)/usr/include
+
+CFLAGS  += -Os
+CFLAGS  += -march=armv5te -mtune=xscale -mfloat-abi=soft
+
+# libSDL_image/libSDL_ttf (linked by gmenunx.mk itself) pull in libpng and
+# libfreetype respectively, which live in DEPS_STAGE, not SDL_STAGE --
+# -rpath-link (not -rpath) lets the cross-linker resolve those *indirect*
+# dependencies at link time without baking a device-side path into the
+# binary; same reasoning as piko's tools/build-thirdparty-deps.sh.
+LDFLAGS += -L$(DEPS_STAGE)/usr/lib -Wl,-rpath-link=$(DEPS_STAGE)/usr/lib
+LDFLAGS += -Wl,-rpath-link=$(SDL_STAGE)/usr/lib
+
+# This is the first SDL-based app on piko -- none of libSDL/libSDL_image/
+# libSDL_ttf/libz/libpng/libfreetype are deployed to the device yet, on
+# the card or off it. Rather than ship them to the NAND root (like the
+# X11/matchbox stack's libstdc++/libgcc_s, see
+# piko/tools/build-matchbox-payload.sh) -- this project only installs to
+# the SD card -- this bakes a RUNTIME (not link-time) rpath pointing at
+# the card overlay's usr/lib, so the package can carry its own copies
+# there (see build-package.sh) without touching NAND or any system
+# LD_LIBRARY_PATH/ld.so.conf config.
+LDFLAGS += -Wl,-rpath,/mnt/card/.zaurus/usr/lib
+
+include gmenunx.mk
