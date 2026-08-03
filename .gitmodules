@@ -1,0 +1,4 @@
+[submodule "emulators/pocketsnes"]
+	path = emulators/pocketsnes
+	url = https://github.com/sugarkrap/PocketSNES.git
+	branch = master
